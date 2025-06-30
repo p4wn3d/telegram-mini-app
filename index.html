@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Рулетка Подарков</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            height: 100vh;
+            overflow: hidden;
+        }
+        
+        .container {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .header {
+            padding: 20px;
+            text-align: center;
+            background: rgba(0,0,0,0.2);
+        }
+        
+        .balance {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        
+        .buy-button {
+            background: linear-gradient(45deg, #ffd700, #ffed4e);
+            color: #333;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        
+        .buy-button:hover {
+            transform: scale(1.05);
+        }
+        
+        .content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
+        .tab-content {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+        }
+        
+        .roulette-container {
+            text-align: center;
+        }
+        
+        .roulette-wheel {
+            width: 300px;
+            height: 300px;
+            border: 8px solid #fff;
+            border-radius: 50%;
+            margin: 20px auto;
+            position: relative;
+            background: conic-gradient(
+                #ff6b6b 0deg 45deg,
+                #4ecdc4 45deg 90deg,
+                #45b7d1 90deg 135deg,
+                #96ceb4 135deg 180deg,
+                #ffeaa7 180deg 225deg,
+                #dda0dd 225deg 270deg,
+                #98d8c8 270deg 315deg,
+                #f7dc6f 315deg 360deg
+            );
+            transition: transform 3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        }
+        
+        .roulette-pointer {
+            position: absolute;
+            top: -15px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 15px solid transparent;
+            border-right: 15px solid transparent;
+            border-top: 30px solid #fff;
+            z-index: 10;
+        }
+        
+        .spin-button {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 25px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            margin: 20px;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+        
+        .spin-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+        }
+        
+        .spin-button:disabled {
+            background: #666;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .cost-info {
+            margin: 10px 0;
+            font-size: 16px;
+            opacity: 0.9;
+        }
+        
+        .profile-container {
+            text-align: center;
+        }
+        
+        .inventory {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .gift-item {
+            background: rgba(255,255,255,0.1);
+            border-radius: 15px;
+            padding: 15px;
+            text-align: center;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        
+        .gift-image {
+            width: 60px;
+            height: 60px;
+            object-fit: cover;
+            border-radius: 10px;
+            margin-bottom: 10px;
+        }
+        
+        .gift-name {
+            font-size: 12px;
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+        
+        .gift-actions {
+            display: flex;
+            gap: 5px;
+            justify-content: center;
+        }
+        
+        .action-btn {
+            padding: 4px 8px;
+            border: none;
+            border-radius: 12px;
+            font-size: 10px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        
+        .claim-btn {
+            background: #4CAF50;
+            color: white;
+        }
+        
+        .sell-btn {
+            background: #2196F3;
+            color: white;
+        }
+        
+        .bottom-nav {
+            display: flex;
+            background: rgba(0,0,0,0.3);
+            backdrop-filter: blur(10px);
+        }
+        
+        .nav-item {
+            flex: 1;
+            padding: 15px;
+            text-align: center;
+            cursor: pointer;
+            border: none;
+            background: none;
+            color: rgba(255,255,255,0.7);
+            transition: all 0.3s;
+        }
+        
+        .nav-item.active {
+            color: white;
+            background: rgba(255,255,255,0.1);
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal-content {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 30px;
+            border-radius: 20px;
+            text-align: center;
+            max-width: 300px;
+            width: 90%;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        
+        .prize-image {
+            width: 100px;
+            height: 100px;
+            object-fit: cover;
+            border-radius: 15px;
+            margin: 20px 0;
+        }
+        
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+        
+        .modal-btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 15px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        
+        .modal-btn:hover {
+            transform: scale(1.05);
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        .notification {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            z-index: 2000;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="balance">💎 <span id="balance">0</span> осколков</div>
+            <button class="buy-button" onclick="buyShards()">Купить осколки</button>
+        </div>
+        
+        <div class="content">
+            <div id="roulette-tab" class="tab-content">
+                <div class="roulette-container">
+                    <div class="roulette-wheel" id="roulette">
+                        <div class="roulette-pointer"></div>
+                    </div>
+                    <div class="cost-info">Стоимость: 100 💎</div>
+                    <button class="spin-button" id="spin-btn" onclick="spinRoulette()">
+                        Крутить рулетку!
+                    </button>
+                </div>
+            </div>
+            
+            <div id="profile-tab" class="tab-content hidden">
+                <div class="profile-container">
+                    <h2>Мой инвентарь</h2>
+                    <div class="inventory" id="inventory">
+                        <div style="grid-column: 1/-1; opacity: 0.7; padding: 40px;">
+                            Ваш инвентарь пуст. Покрутите рулетку!
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="bottom-nav">
+            <button class="nav-item active" onclick="switchTab('roulette')">
+                🎰 Рулетка
+            </button>
+            <button class="nav-item" onclick="switchTab('profile')">
+                👤 Профиль
+            </button>
+        </div>
+    </div>
+    
+    <div class="modal" id="prize-modal">
+        <div class="modal-content">
+            <h3>Поздравляем! 🎉</h3>
+            <p>Вы выиграли:</p>
+            <img class="prize-image" id="prize-image" src="" alt="">
+            <h4 id="prize-name"></h4>
+            <p id="prize-value"></p>
+            <div class="modal-buttons">
+                <button class="modal-btn claim-btn" onclick="claimPrize()">
+                    Забрать
+                </button>
+                <button class="modal-btn sell-btn" onclick="sellPrize()">
+                    Продать за <span id="sell-price"></span> 💎
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="notification" id="notification"></div>
+
+    <script>
+        // Telegram Web App initialization
+        let tg = window.Telegram.WebApp;
+        tg.ready();
+        tg.expand();
+
+        // Game state
+        let gameState = {
+            balance: parseInt(localStorage.getItem('balance') || '500'),
+            inventory: JSON.parse(localStorage.getItem('inventory') || '[]'),
+            currentPrize: null
+        };
+
+        // Sample gifts data (based on Telegram gifts)
+        const gifts = [
+            { id: 1, name: "Звезда", image: "⭐", price: 1, sellPrice: 0.8 },
+            { id: 2, name: "Сердце", image: "❤️", price: 5, sellPrice: 4 },
+            { id: 3, name: "Огонь", image: "🔥", price: 10, sellPrice: 8 },
+            { id: 4, name: "Алмаз", image: "💎", price: 25, sellPrice: 20 },
+            { id: 5, name: "Корона", image: "👑", price: 50, sellPrice: 40 },
+            { id: 6, name: "Ракета", image: "🚀", price: 100, sellPrice: 80 },
+            { id: 7, name: "Единорог", image: "🦄", price: 250, sellPrice: 200 },
+            { id: 8, name: "Дракон", image: "🐉", price: 500, sellPrice: 400 }
+        ];
+
+        // Initialize app
+        function init() {
+            updateBalance();
+            updateInventoryDisplay();
+        }
+
+        function updateBalance() {
+            document.getElementById('balance').textContent = gameState.balance;
+            localStorage.setItem('balance', gameState.balance.toString());
+        }
+
+        function updateInventoryDisplay() {
+            const inventory = document.getElementById('inventory');
+            if (gameState.inventory.length === 0) {
+                inventory.innerHTML = '<div style="grid-column: 1/-1; opacity: 0.7; padding: 40px;">Ваш инвентарь пуст. Покрутите рулетку!</div>';
+                return;
+            }
+
+            inventory.innerHTML = gameState.inventory.map(item => `
+                <div class="gift-item">
+                    <div class="gift-image" style="font-size: 40px;">${item.image}</div>
+                    <div class="gift-name">${item.name}</div>
+                    <div class="gift-actions">
+                        <button class="action-btn claim-btn" onclick="claimFromInventory(${item.id})">
+                            Забрать
+                        </button>
+                        <button class="action-btn sell-btn" onclick="sellFromInventory(${item.id})">
+                            ${Math.floor(item.sellPrice)} 💎
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+            
+            localStorage.setItem('inventory', JSON.stringify(gameState.inventory));
+        }
+
+        function switchTab(tab) {
+            document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.add('hidden'));
+
+            if (tab === 'roulette') {
+                document.getElementById('roulette-tab').classList.remove('hidden');
+                document.querySelector('.nav-item:first-child').classList.add('active');
+            } else {
+                document.getElementById('profile-tab').classList.remove('hidden');
+                document.querySelector('.nav-item:last-child').classList.add('active');
+            }
+        }
+
+        function spinRoulette() {
+            if (gameState.balance < 100) {
+                showNotification('Недостаточно осколков! Купите еще.');
+                return;
+            }
+
+            gameState.balance -= 100;
+            updateBalance();
+
+            const spinBtn = document.getElementById('spin-btn');
+            const roulette = document.getElementById('roulette');
+            
+            spinBtn.disabled = true;
+            spinBtn.textContent = 'Крутится...';
+
+            // Random rotation
+            const rotations = 1800 + Math.random() * 1800; // 5-10 full rotations
+            roulette.style.transform = `rotate(${rotations}deg)`;
+
+            // Determine prize
+            const randomGift = gifts[Math.floor(Math.random() * gifts.length)];
+            gameState.currentPrize = randomGift;
+
+            setTimeout(() => {
+                showPrizeModal(randomGift);
+                spinBtn.disabled = false;
+                spinBtn.textContent = 'Крутить рулетку!';
+                roulette.style.transform = 'rotate(0deg)';
+            }, 3000);
+        }
+
+        function showPrizeModal(gift) {
+            document.getElementById('prize-image').textContent = gift.image;
+            document.getElementById('prize-image').style.fontSize = '60px';
+            document.getElementById('prize-name').textContent = gift.name;
+            document.getElementById('prize-value').textContent = `Стоимость: ${gift.price} ⭐`;
+            document.getElementById('sell-price').textContent = Math.floor(gift.sellPrice);
+            document.getElementById('prize-modal').style.display = 'flex';
+        }
+
+        function claimPrize() {
+            if (gameState.currentPrize) {
+                // Here you would integrate with Telegram API to send the gift
+                showNotification(`Подарок "${gameState.currentPrize.name}" отправлен!`);
+                document.getElementById('prize-modal').style.display = 'none';
+                gameState.currentPrize = null;
+            }
+        }
+
+        function sellPrize() {
+            if (gameState.currentPrize) {
+                const sellValue = Math.floor(gameState.currentPrize.sellPrice);
+                gameState.balance += sellValue;
+                updateBalance();
+                showNotification(`Получено ${sellValue} осколков!`);
+                document.getElementById('prize-modal').style.display = 'none';
+                gameState.currentPrize = null;
+            }
+        }
+
+        function claimFromInventory(giftId) {
+            const giftIndex = gameState.inventory.findIndex(item => item.id === giftId);
+            if (giftIndex !== -1) {
+                const gift = gameState.inventory[giftIndex];
+                gameState.inventory.splice(giftIndex, 1);
+                updateInventoryDisplay();
+                showNotification(`Подарок "${gift.name}" отправлен!`);
+            }
+        }
+
+        function sellFromInventory(giftId) {
+            const giftIndex = gameState.inventory.findIndex(item => item.id === giftId);
+            if (giftIndex !== -1) {
+                const gift = gameState.inventory[giftIndex];
+                const sellValue = Math.floor(gift.sellPrice);
+                gameState.balance += sellValue;
+                gameState.inventory.splice(giftIndex, 1);
+                updateBalance();
+                updateInventoryDisplay();
+                showNotification(`Получено ${sellValue} осколков!`);
+            }
+        }
+
+        function buyShards() {
+            // Integration with Telegram Stars payment
+            if (tg.initDataUnsafe?.user) {
+                tg.showPopup({
+                    title: "Покупка осколков",
+                    message: "Хотите купить 1000 осколков за 1 Telegram Star?",
+                    buttons: [
+                        {type: "ok", text: "Купить"},
+                        {type: "cancel", text: "Отмена"}
+                    ]
+                }, (buttonId) => {
+                    if (buttonId === "ok") {
+                        // Here you would integrate with Telegram Payments API
+                        gameState.balance += 1000;
+                        updateBalance();
+                        showNotification("Осколки успешно добавлены!");
+                    }
+                });
+            } else {
+                // For testing purposes
+                gameState.balance += 1000;
+                updateBalance();
+                showNotification("Добавлено 1000 осколков (тестовый режим)");
+            }
+        }
+
+        function showNotification(message) {
+            const notification = document.getElementById('notification');
+            notification.textContent = message;
+            notification.style.display = 'block';
+            setTimeout(() => {
+                notification.style.display = 'none';
+            }, 3000);
+        }
+
+        // Close modal when clicking outside
+        document.getElementById('prize-modal').addEventListener('click', (e) => {
+            if (e.target.id === 'prize-modal') {
+                document.getElementById('prize-modal').style.display = 'none';
+            }
+        });
+
+        // Initialize the app
+        init();
+
+        // Set Telegram Web App theme
+        if (tg.colorScheme === 'dark') {
+            document.body.style.background = 'linear-gradient(135deg, #2c3e50 0%, #34495e 100%)';
+        }
+    </script>
+</body>
+</html>
